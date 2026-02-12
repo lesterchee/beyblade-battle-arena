@@ -11,43 +11,38 @@ interface BeybladeCardProps {
 }
 
 export function BeybladeCard({ blade, isSelected, onClick, disabled }: BeybladeCardProps) {
-    // Determine stats percentage (assuming max 100)
-    const getWidth = (val: number) => `${Math.min(100, val)}%`;
-
     return (
         <Card
             onClick={!disabled ? onClick : undefined}
+            skew={true}
             className={cn(
-                "relative overflow-hidden transition-all duration-300 group select-none",
+                "relative overflow-hidden transition-all duration-300 group select-none min-h-[320px] flex flex-col items-center",
                 isSelected
-                    ? "ring-2 ring-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-slate-800"
-                    : "hover:bg-slate-800/50 opacity-80 hover:opacity-100",
+                    ? "border-blue-500 bg-blue-900/40 shadow-[0_0_30px_rgba(59,130,246,0.5)] scale-105 z-10"
+                    : "hover:bg-slate-800/80 opacity-90 hover:opacity-100",
                 disabled && "opacity-40 cursor-not-allowed grayscale"
             )}
             hover={!disabled && !isSelected}
         >
-            {/* Background Accent */}
+            {/* Background Gradient */}
             <div
-                className="absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl -z-0 opacity-20"
-                style={{ backgroundColor: blade.color }}
+                className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 z-0"
             />
 
-            <div className="relative z-10 flex flex-col gap-3">
+            <div className="relative z-10 w-full flex flex-col items-center gap-4">
                 {/* Header */}
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h3 className="font-orbitron font-bold text-lg text-white leading-none">
-                            {blade.name}
-                        </h3>
-                        <span className="text-xs text-slate-400 font-oswald tracking-wide uppercase">
-                            {blade.type} Type
-                        </span>
-                    </div>
+                <div className="w-full text-center border-b-2 border-white/20 pb-2">
+                    <h3 className="font-barlow font-black italic text-2xl text-white uppercase tracking-wider drop-shadow-md">
+                        {blade.name}
+                    </h3>
+                    <span className="text-xs text-blue-300 font-bold uppercase tracking-[0.2em]">
+                        {blade.type} Type
+                    </span>
                 </div>
 
                 {/* Beyblade Image */}
-                <div className="flex justify-center my-2">
-                    <div className="relative w-32 h-32 rounded-full border-4 border-slate-700/50 shadow-2xl overflow-hidden bg-slate-900 group-hover:scale-110 transition-transform duration-500">
+                <div className="relative group-hover:scale-110 transition-transform duration-500">
+                    <div className="w-32 h-32 rounded-full border-4 border-slate-900 shadow-2xl overflow-hidden relative z-10">
                         {blade.image ? (
                             <img
                                 src={blade.image}
@@ -55,52 +50,52 @@ export function BeybladeCard({ blade, isSelected, onClick, disabled }: BeybladeC
                                 className="w-full h-full object-cover"
                             />
                         ) : (
-                            <div
-                                className="w-full h-full"
-                                style={{ backgroundColor: blade.color }}
-                            />
+                            <div className="w-full h-full" style={{ backgroundColor: blade.color }} />
                         )}
-
-                        {/* Shine effect */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                     </div>
+                    {/* Spin Disc Effect */}
+                    <div className="absolute inset-0 -z-10 rounded-full border-2 border-white/30 scale-125 animate-[spin_3s_linear_infinite] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 -z-10 rounded-full border border-blue-500 scale-150 animate-[spin_5s_linear_infinite_reverse] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
 
-                {/* Stats Grid */}
-                <div className="space-y-1.5 mt-2">
-                    <StatBar label="ATK" value={blade.stats.ATK} color="bg-red-500" />
-                    <StatBar label="DEF" value={blade.stats.DEF} color="bg-green-500" />
-                    <StatBar label="SPD" value={blade.stats.SPD} color="bg-yellow-500" />
-                    <StatBar label="STA" value={blade.stats.STA} color="bg-blue-500" />
+                {/* Tech Stats Grid */}
+                <div className="w-full space-y-2 mt-2 bg-black/40 p-3 clip-path-polygon">
+                    <StatRow label="ATK" value={blade.stats.ATK} color="bg-red-500" />
+                    <StatRow label="DEF" value={blade.stats.DEF} color="bg-green-500" />
+                    <StatRow label="SPD" value={blade.stats.SPD} color="bg-yellow-500" />
+                    <StatRow label="STA" value={blade.stats.STA} color="bg-blue-500" />
                 </div>
             </div>
 
             {isSelected && (
-                <motion.div
-                    layoutId="selection-ring"
-                    className="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                />
+                <div className="absolute top-2 right-2 text-blue-400 animate-pulse">
+                    Selected
+                </div>
             )}
         </Card>
     );
 }
 
-function StatBar({ label, value, color }: { label: string, value: number, color: string }) {
+function StatRow({ label, value, color }: { label: string, value: number, color: string }) {
+    // Generate hex blocks
+    const maxBlocks = 10;
+    const filledBlocks = Math.ceil((value / 100) * maxBlocks);
+
     return (
-        <div className="flex items-center gap-2 text-xs">
-            <span className="w-6 font-bold text-slate-400">{label}</span>
-            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${value}%` }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                    className={cn("h-full rounded-full", color)}
-                />
+        <div className="flex items-center gap-2">
+            <span className="w-8 font-barlow font-bold italic text-slate-400 text-sm">{label}</span>
+            <div className="flex-1 flex gap-1 h-3">
+                {Array.from({ length: maxBlocks }).map((_, i) => (
+                    <div
+                        key={i}
+                        className={cn(
+                            "flex-1 h-full transform -skew-x-12",
+                            i < filledBlocks ? color : "bg-slate-800"
+                        )}
+                    />
+                ))}
             </div>
-            <span className="w-6 text-right text-slate-500">{value}</span>
+            <span className="w-6 text-right font-mono text-xs text-slate-500">{value}</span>
         </div>
     );
 }
