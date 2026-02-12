@@ -79,7 +79,7 @@ export function BattleView({ playerBlade, opponentBlade, onExit, onMatchComplete
 
     return (
         <motion.div
-            className="relative w-full h-[80vh] bg-black rounded-sm overflow-hidden border-4 border-black shadow-2xl"
+            className="relative w-[80vw] md:w-full h-[80vh] mx-auto bg-black rounded-sm overflow-hidden border-4 border-black shadow-2xl"
             animate={{ x: shake > 0 ? [0, -10, 10, -5, 5, 0] : 0 }}
             transition={{ duration: 0.2 }}
         >
