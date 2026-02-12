@@ -2,6 +2,7 @@ import { useReducer, useEffect, useCallback, useRef } from 'react';
 import { Beyblade, BattleState, BattleLog } from '@/types/game';
 import { GAME_CONFIG } from '@/lib/constants';
 import { randomInt } from '@/lib/utils';
+import { audioManager } from '@/lib/audio';
 
 type Action =
     | { type: 'START_BATTLE' }
@@ -85,6 +86,7 @@ export function useBattleEngine(playerBlade: Beyblade, opponentBlade: Beyblade) 
                 if (currentState.playerHP > currentState.opponentHP) winner = playerBlade.id;
                 if (currentState.opponentHP > currentState.playerHP) winner = opponentBlade.id;
 
+                audioManager.playWin();
                 dispatch({ type: 'END_BATTLE', payload: { winner } });
                 return;
             }
@@ -94,13 +96,17 @@ export function useBattleEngine(playerBlade: Beyblade, opponentBlade: Beyblade) 
             const willClash = Math.random() < clashChance;
 
             if (willClash) {
+                // Audio Feedback
+
                 const p1Hit = calculateDamage(playerBlade, opponentBlade);
                 const p2Hit = calculateDamage(opponentBlade, playerBlade);
 
                 const newLogs: BattleLog[] = [];
                 const timestamp = Date.now();
+                let someCrit = false;
 
                 if (p1Hit.isCrit) {
+                    someCrit = true;
                     newLogs.push({
                         id: `crit-${timestamp}-p1`,
                         timestamp,
@@ -112,6 +118,7 @@ export function useBattleEngine(playerBlade: Beyblade, opponentBlade: Beyblade) 
                 }
 
                 if (p2Hit.isCrit) {
+                    someCrit = true;
                     newLogs.push({
                         id: `crit-${timestamp}-p2`,
                         timestamp,
@@ -120,6 +127,12 @@ export function useBattleEngine(playerBlade: Beyblade, opponentBlade: Beyblade) 
                         source: opponentBlade.id,
                         damage: p2Hit.damage
                     });
+                }
+
+                if (someCrit) {
+                    audioManager.playCritical();
+                } else {
+                    audioManager.playClash();
                 }
 
                 if (!p1Hit.isCrit && !p2Hit.isCrit) {

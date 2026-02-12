@@ -7,10 +7,11 @@ import { Beyblade } from '@/types/game';
 import { Button } from '@/components/ui/Button';
 import { BattleView } from '@/components/features/BattleView';
 import { BeybladeCustomizer } from '@/components/features/BeybladeCustomizer';
+import { TournamentView } from '@/components/features/TournamentView';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Phase: 'selection' | 'battle' | 'result'
-type CheckPhase = 'selection' | 'battle' | 'result';
+// Phase: 'selection' | 'battle' | 'result' | 'tournament'
+type CheckPhase = 'selection' | 'battle' | 'result' | 'tournament';
 
 export default function GamePage() {
   const [phase, setPhase] = useState<CheckPhase>('selection');
@@ -35,6 +36,10 @@ export default function GamePage() {
     if (playerBlade && opponentBlade) {
       setPhase('battle');
     }
+  };
+
+  const startTournament = () => {
+    setPhase('tournament');
   };
 
   return (
@@ -109,6 +114,16 @@ export default function GamePage() {
                 </div>
               </div>
 
+              {/* Main Menu Actions */}
+              <div className="flex justify-center gap-6 mb-4">
+                <Button
+                  onClick={startTournament}
+                  className="bg-yellow-600 hover:bg-yellow-500 text-xl px-8 py-6 w-64 shadow-[0_0_20px_rgba(234,179,8,0.3)] border-yellow-500/50"
+                >
+                  TOURNAMENT MODE
+                </Button>
+              </div>
+
               {/* Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 {BEYBLADE_ROSTER.map((blade) => {
@@ -143,6 +158,18 @@ export default function GamePage() {
                 opponentBlade={opponentBlade}
                 onExit={() => setPhase('selection')}
               />
+            </motion.div>
+          )}
+
+          {phase === 'tournament' && (
+            <motion.div
+              key="tournament"
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              className="flex-1 w-full"
+            >
+              <TournamentView onExit={() => setPhase('selection')} />
             </motion.div>
           )}
         </AnimatePresence>

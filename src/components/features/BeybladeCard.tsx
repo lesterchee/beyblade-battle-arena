@@ -43,11 +43,27 @@ export function BeybladeCard({ blade, isSelected, onClick, disabled }: BeybladeC
                             {blade.type} Type
                         </span>
                     </div>
-                    {/* Mock Icon */}
-                    <div
-                        className="w-8 h-8 rounded-full border-2 border-slate-600 shadow-inner"
-                        style={{ backgroundColor: blade.color }}
-                    />
+                </div>
+
+                {/* Beyblade Image */}
+                <div className="flex justify-center my-2">
+                    <div className="relative w-32 h-32 rounded-full border-4 border-slate-700/50 shadow-2xl overflow-hidden bg-slate-900 group-hover:scale-110 transition-transform duration-500">
+                        {blade.image ? (
+                            <img
+                                src={blade.image}
+                                alt={blade.name}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div
+                                className="w-full h-full"
+                                style={{ backgroundColor: blade.color }}
+                            />
+                        )}
+
+                        {/* Shine effect */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    </div>
                 </div>
 
                 {/* Stats Grid */}

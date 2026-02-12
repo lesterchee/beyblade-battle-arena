@@ -1,11 +1,11 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
+import React, { useRef, useEffect, useState } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stars, PerspectiveCamera } from '@react-three/drei';
 import { BattleState, Beyblade } from '@/types/game';
-import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+// import { audioManager } from '@/lib/audio';
 
 interface BattleSceneProps {
     state: BattleState;
@@ -13,10 +13,15 @@ interface BattleSceneProps {
     opponent: Beyblade;
 }
 
+// Physics Config
+const FIELD_RADIUS = 14;
+const GRAVITY = 0.15; // Pull to center
+const BLADE_RADIUS = 2.0;
+
 export function BattleScene({ state, player, opponent }: BattleSceneProps) {
     return (
         <Canvas shadows dpr={[1, 2]}>
-            <PerspectiveCamera makeDefault position={[0, 15, 25]} fov={50} />
+            <PerspectiveCamera makeDefault position={[0, 20, 30]} fov={45} />
             <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2.5} />
 
             {/* Lighting */}
@@ -28,42 +33,248 @@ export function BattleScene({ state, player, opponent }: BattleSceneProps) {
             <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
             <ArenaFloor />
 
-            {/* Beyblades */}
-            <Beyblade3D
-                blade={player}
-                isPlayer={true}
-                hp={state.playerHP}
-                isWinner={state.winner === player.id}
-                isLoser={!!state.winner && state.winner !== 'draw' && state.winner !== player.id}
-            />
-            <Beyblade3D
-                blade={opponent}
-                isPlayer={false}
-                hp={state.opponentHP}
-                isWinner={state.winner === opponent.id}
-                isLoser={!!state.winner && state.winner !== 'draw' && state.winner !== opponent.id}
-            />
+            {/* Physics Manager & Beyblades */}
+            <BattleManager state={state} player={player} opponent={opponent} />
         </Canvas>
+    );
+}
+
+// Spark Particle System
+interface Spark {
+    id: number;
+    x: number;
+    z: number;
+    vx: number;
+    vz: number;
+    life: number;
+    color: string;
+}
+
+function BattleManager({ state, player, opponent }: BattleSceneProps) {
+    const playerMesh = useRef<THREE.Group>(null);
+    const opponentMesh = useRef<THREE.Group>(null);
+
+    // Sparks State
+    const [sparks, setSparks] = useState<Spark[]>([]);
+    const sparkIdCounter = useRef(0);
+
+    const createSparks = (x: number, z: number, intensity: number) => {
+        const newSparks: Spark[] = [];
+        const count = Math.floor(10 * intensity);
+
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 0.5 * intensity;
+            newSparks.push({
+                id: sparkIdCounter.current++,
+                x,
+                z,
+                vx: Math.cos(angle) * speed,
+                vz: Math.sin(angle) * speed,
+                life: 1.0,
+                color: Math.random() > 0.5 ? '#facc15' : '#f97316' // Yellow/Orange
+            });
+        }
+        setSparks(prev => [...prev, ...newSparks]);
+    };
+
+    // Physics State
+    const physics = useRef({
+        p1: {
+            pos: new THREE.Vector3(-6, 0, -2),
+            vel: new THREE.Vector3(0, 0, 0),
+            mass: 1
+        },
+        p2: {
+            pos: new THREE.Vector3(6, 0, 2),
+            vel: new THREE.Vector3(0, 0, 0),
+            mass: 1
+        }
+    });
+
+    const initialized = useRef(false);
+    const lastCollisionTime = useRef(0);
+
+    useEffect(() => {
+        // Reset physics on new battle start
+        if (state.status === 'fighting') {
+            physics.current.p1.mass = 1 + (player.stats.DEF / 100);
+            physics.current.p2.mass = 1 + (opponent.stats.DEF / 100);
+
+            physics.current.p1.pos.set(-6, 0, -2);
+            physics.current.p2.pos.set(6, 0, 2);
+
+            const p1Spd = 0.3 + (player.stats.SPD / 300);
+            const p2Spd = 0.3 + (opponent.stats.SPD / 300);
+
+            physics.current.p1.vel.set(0.1, 0, p1Spd);
+            physics.current.p2.vel.set(-0.1, 0, -p2Spd);
+
+            initialized.current = true;
+            setSparks([]);
+        }
+    }, [state.status, player, opponent]);
+
+    useFrame((_, delta) => {
+        // Update Sparks
+        setSparks(prev => prev.map(s => ({
+            ...s,
+            x: s.x + s.vx,
+            z: s.z + s.vz,
+            life: s.life - delta * 3, // Fade out speed
+            vx: s.vx * 0.9,
+            vz: s.vz * 0.9
+        })).filter(s => s.life > 0));
+
+        if (!playerMesh.current || !opponentMesh.current) return;
+
+        const p1 = physics.current.p1;
+        const p2 = physics.current.p2;
+
+        if (state.status === 'fighting') {
+            // 1. Apply Forces (Gravity/Slope)
+            const applySlope = (obj: typeof p1) => {
+                const dist = Math.sqrt(obj.pos.x ** 2 + obj.pos.z ** 2);
+                if (dist > 0) {
+                    const force = GRAVITY * (dist / FIELD_RADIUS);
+                    const angle = Math.atan2(obj.pos.z, obj.pos.x);
+                    obj.vel.x -= Math.cos(angle) * force * 0.1;
+                    obj.vel.z -= Math.sin(angle) * force * 0.1;
+                }
+            };
+            applySlope(p1);
+            applySlope(p2);
+
+            // 2. Movement
+            p1.pos.add(p1.vel);
+            p2.pos.add(p2.vel);
+
+            // 3. Wall Collision
+            const checkWall = (obj: typeof p1) => {
+                const dist = Math.sqrt(obj.pos.x ** 2 + obj.pos.z ** 2);
+                if (dist > FIELD_RADIUS - BLADE_RADIUS) {
+                    const normal = new THREE.Vector3(-obj.pos.x, 0, -obj.pos.z).normalize();
+                    const dot = obj.vel.dot(normal);
+
+                    if (dot < 0) {
+                        obj.vel.reflect(normal).multiplyScalar(0.7);
+                        const overlap = dist - (FIELD_RADIUS - BLADE_RADIUS);
+                        obj.pos.add(normal.multiplyScalar(overlap));
+                    }
+                }
+            };
+            checkWall(p1);
+            checkWall(p2);
+
+            // 4. Blade Collision
+            const dx = p2.pos.x - p1.pos.x;
+            const dz = p2.pos.z - p1.pos.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            const minDist = BLADE_RADIUS * 2;
+
+            if (dist < minDist) {
+                // Collision!
+                const now = Date.now();
+                if (now - lastCollisionTime.current > 100) { // Limit spark frequency
+                    const midX = (p1.pos.x + p2.pos.x) / 2;
+                    const midZ = (p1.pos.z + p2.pos.z) / 2;
+                    createSparks(midX, midZ, 1.5);
+                    lastCollisionTime.current = now;
+                }
+
+                const nx = dx / dist;
+                const nz = dz / dist;
+
+                const rvx = p2.vel.x - p1.vel.x;
+                const rvz = p2.vel.z - p1.vel.z;
+                const velAlongNormal = rvx * nx + rvz * nz;
+
+                if (velAlongNormal < 0) {
+                    const restitution = 1.5;
+                    let j = -(1 + restitution) * velAlongNormal;
+                    j /= (1 / p1.mass + 1 / p2.mass);
+
+                    const impulseX = j * nx;
+                    const impulseZ = j * nz;
+                    const repulsion = 0.5;
+
+                    p1.vel.x -= (impulseX + nx * -repulsion) / p1.mass;
+                    p1.vel.z -= (impulseZ + nz * -repulsion) / p1.mass;
+                    p2.vel.x += (impulseX + nx * repulsion) / p2.mass;
+                    p2.vel.z += (impulseZ + nz * repulsion) / p2.mass;
+                }
+
+                const overlap = minDist - dist;
+                const separationX = nx * overlap * 0.51;
+                const separationZ = nz * overlap * 0.51;
+
+                p1.pos.x -= separationX;
+                p1.pos.z -= separationZ;
+                p2.pos.x += separationX;
+                p2.pos.z += separationZ;
+            }
+        }
+
+        // 5. Update Meshes & Rotation
+        playerMesh.current.position.set(p1.pos.x, 0, p1.pos.z);
+        opponentMesh.current.position.set(p2.pos.x, 0, p2.pos.z);
+
+        const p1HealthRatio = Math.max(0, state.playerHP / state.playerMaxHP);
+        const p2HealthRatio = Math.max(0, state.opponentHP / state.opponentMaxHP);
+
+        const p1SpinSpd = 0.1 + (p1HealthRatio * 0.3);
+        const p2SpinSpd = 0.1 + (p2HealthRatio * 0.3);
+
+        if (state.status !== 'finished') {
+            playerMesh.current.rotation.y += p1SpinSpd;
+            opponentMesh.current.rotation.y -= p2SpinSpd;
+
+            playerMesh.current.rotation.x = p1.vel.z * 1.5;
+            playerMesh.current.rotation.z = -p1.vel.x * 1.5;
+            opponentMesh.current.rotation.x = p2.vel.z * 1.5;
+            opponentMesh.current.rotation.z = -p2.vel.x * 1.5;
+        } else {
+            const t = Date.now() / 1000;
+            if (state.winner === player.id) {
+                playerMesh.current.position.y = Math.abs(Math.sin(t * 10)) * 1.5;
+                playerMesh.current.rotation.y += 0.2;
+                opponentMesh.current.rotation.x = Math.PI / 4;
+                opponentMesh.current.position.y = 0;
+            } else if (state.winner === opponent.id) {
+                opponentMesh.current.position.y = Math.abs(Math.sin(t * 10)) * 1.5;
+                opponentMesh.current.rotation.y -= 0.2;
+                playerMesh.current.rotation.x = Math.PI / 4;
+                playerMesh.current.position.y = 0;
+            }
+        }
+    });
+
+    return (
+        <>
+            <Beyblade3D ref={playerMesh} blade={player} />
+            <Beyblade3D ref={opponentMesh} blade={opponent} />
+
+            {/* Sparks Rendering */}
+            <group>
+                {sparks.map(s => (
+                    <mesh key={s.id} position={[s.x, 0.5, s.z]}>
+                        <boxGeometry args={[0.2 * s.life, 0.2 * s.life, 0.2 * s.life]} />
+                        <meshBasicMaterial color={s.color} transparent opacity={s.life} />
+                    </mesh>
+                ))}
+            </group>
+        </>
     );
 }
 
 function ArenaFloor() {
     return (
         <group position={[0, -2, 0]}>
-            {/* Main Floor */}
             <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
                 <circleGeometry args={[15, 64]} />
-                <meshStandardMaterial
-                    color="#1e293b"
-                    metalness={0.8}
-                    roughness={0.2}
-                />
+                <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
             </mesh>
-
-            {/* Grid Lines */}
             <gridHelper args={[30, 30, '#334155', '#334155']} position={[0, 0.01, 0]} />
-
-            {/* Outer Ring */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
                 <ringGeometry args={[14.8, 15.5, 64]} />
                 <meshStandardMaterial color="#3b82f6" emissive="#1d4ed8" emissiveIntensity={2} toneMapped={false} />
@@ -74,79 +285,30 @@ function ArenaFloor() {
 
 interface Beyblade3DProps {
     blade: Beyblade;
-    isPlayer: boolean;
-    hp: number;
-    isWinner: boolean;
-    isLoser: boolean;
 }
 
-function Beyblade3D({ blade, isPlayer, hp, isWinner, isLoser }: Beyblade3DProps) {
-    const meshRef = useRef<THREE.Group>(null);
-
-    useFrame(({ clock }) => {
-        if (!meshRef.current) return;
-
-        const t = clock.getElapsedTime();
-
-        // Winner Animation: Bounce in joy
-        if (isWinner) {
-            const bounce = Math.abs(Math.sin(t * 5)) * 2; // Fast bounce
-            meshRef.current.position.y = bounce;
-            meshRef.current.rotation.y += 0.1;
-            return;
-        }
-
-        // Loser Animation: Fly out
-        if (isLoser) {
-            const flySpeed = 0.5;
-            const direction = isPlayer ? -1 : 1; // Fly away from center based on side? 
-            // Actually, just let them fly off tangent or straight back
-            // Let's make them fly UP and AWAY
-            meshRef.current.position.y += 0.2;
-            meshRef.current.position.x += direction * 0.2;
-            meshRef.current.rotation.z += 0.2; // Tumble
-            return;
-        }
-
-        // Normal Battle Animation
-        const speed = blade.stats.SPD / 20; // Scale speed
-        const phaseOffset = isPlayer ? 0 : Math.PI; // Start opposite
-        const direction = isPlayer ? 1 : -1;
-
-        // Orbit radius
-        const radius = 6;
-
-        // Position
-        const x = Math.cos(t * speed * direction + phaseOffset) * radius;
-        const z = Math.sin(t * speed * direction + phaseOffset) * radius;
-
-        // Wobble effect based on maxHP vs current HP or just random
-        const wobble = Math.sin(t * 10) * 0.1;
-
-        meshRef.current.position.set(x, 0, z);
-        meshRef.current.rotation.y += 0.2; // Spin on axis
-        meshRef.current.rotation.z = wobble; // Wobble
-    });
+const Beyblade3D = React.forwardRef<THREE.Group, Beyblade3DProps>(({ blade }, ref) => {
+    const texture = useLoader(THREE.TextureLoader, blade.image || '');
 
     return (
-        <group ref={meshRef}>
-            {/* Body */}
+        <group ref={ref}>
             <mesh castShadow receiveShadow position={[0, 0.5, 0]}>
                 <cylinderGeometry args={[2, 1.5, 1, 32]} />
                 <meshStandardMaterial color={blade.color} metalness={0.6} roughness={0.3} />
             </mesh>
-
-            {/* Spinner Top */}
+            <mesh position={[0, 1.01, 0]} rotation={[0, Math.PI, 0]}>
+                <cylinderGeometry args={[1.6, 1.6, 0.1, 32]} />
+                <meshBasicMaterial map={texture} />
+            </mesh>
             <mesh position={[0, 1.1, 0]}>
-                <cylinderGeometry args={[0.5, 0.5, 0.5, 16]} />
+                <cylinderGeometry args={[0.5, 0.5, 0.1, 16]} />
                 <meshStandardMaterial color="#cbd5e1" metalness={1} roughness={0.1} />
             </mesh>
-
-            {/* Glow Ring */}
             <mesh position={[0, 0.5, 0]}>
                 <torusGeometry args={[2.1, 0.1, 8, 32]} />
                 <meshStandardMaterial color={blade.color} emissive={blade.color} emissiveIntensity={2} toneMapped={false} />
             </mesh>
         </group>
     );
-}
+});
+Beyblade3D.displayName = 'Beyblade3D';
