@@ -5,6 +5,7 @@ import { motion, HTMLMotionProps } from 'framer-motion';
 interface CardProps extends HTMLMotionProps<"div"> {
     hover?: boolean;
     skew?: boolean;
+    children?: React.ReactNode;
 }
 
 export function Card({ className, children, hover = false, skew = true, ...props }: CardProps) {
