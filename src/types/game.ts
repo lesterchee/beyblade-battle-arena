@@ -16,14 +16,14 @@ export interface Beyblade {
   image?: string; // For selection card
 }
 
-export type BattleEventType = 
-  | 'start' 
-  | 'clash' 
-  | 'critical' 
-  | 'miss' 
-  | 'special' 
-  | 'win' 
-  | 'loss' 
+export type BattleEventType =
+  | 'start'
+  | 'clash'
+  | 'critical'
+  | 'miss'
+  | 'special'
+  | 'win'
+  | 'loss'
   | 'draw';
 
 export interface BattleLog {
@@ -44,4 +44,13 @@ export interface BattleState {
   logs: BattleLog[];
   status: 'idle' | 'fighting' | 'finished';
   winner: string | null; // Blade ID or 'draw'
+  playerId: string;
+  opponentId: string; // Track P1/P2 explicitly
+  participants: Record<string, {
+    hp: number;
+    maxHP: number;
+    name: string;
+    image?: string;
+    isDead: boolean;
+  }>;
 }

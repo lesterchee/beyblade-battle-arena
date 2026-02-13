@@ -10,15 +10,22 @@ import { BeybladeCustomizer } from '@/components/features/BeybladeCustomizer';
 import { TournamentView } from '@/components/features/TournamentView';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { audioManager } from '@/lib/audio';
 
-// Phase: 'selection' | 'battle' | 'result' | 'tournament'
-type CheckPhase = 'selection' | 'battle' | 'result' | 'tournament';
+// Phase: 'selection' | 'battle' | 'result' | 'tournament' | 'royal-rumble'
+type CheckPhase = 'selection' | 'battle' | 'result' | 'tournament' | 'royal-rumble';
 
 export default function GamePage() {
+  const [roster, setRoster] = useState<Beyblade[]>(BEYBLADE_ROSTER);
   const [phase, setPhase] = useState<CheckPhase>('selection');
   const [playerBlade, setPlayerBlade] = useState<Beyblade | null>(null);
   const [opponentBlade, setOpponentBlade] = useState<Beyblade | null>(null);
   const [isCustomizing, setIsCustomizing] = useState(false);
+
+  const handleBladeUpdate = (updatedBlade: Beyblade) => {
+    setPlayerBlade(updatedBlade);
+    setRoster(prev => prev.map(b => b.id === updatedBlade.id ? updatedBlade : b));
+  };
 
   const handleSelect = (blade: Beyblade) => {
     if (playerBlade?.id === blade.id) {
@@ -37,8 +44,11 @@ export default function GamePage() {
     setOpponentBlade(null);
   };
 
+
+
   const startBattle = () => {
     if (playerBlade && opponentBlade) {
+      audioManager.resume();
       setPhase('battle');
     }
   };
@@ -141,7 +151,7 @@ export default function GamePage() {
               </div>
 
               {/* Mode Switcher */}
-              <div className="flex justify-center -mt-4">
+              <div className="flex justify-center gap-4 -mt-4">
                 <Button
                   onClick={() => setPhase('tournament')}
                   variant="outline"
@@ -149,11 +159,18 @@ export default function GamePage() {
                 >
                   🏆 TOURNAMENT MODE
                 </Button>
+                <Button
+                  onClick={() => setPhase('royal-rumble')}
+                  variant="outline"
+                  className="border-purple-500 text-purple-400 hover:bg-purple-500/10"
+                >
+                  🌪️ ROYAL RUMBLE
+                </Button>
               </div>
 
               {/* Roster Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pb-12 perspective-1000">
-                {BEYBLADE_ROSTER.map((blade, index) => {
+                {roster.map((blade, index) => {
                   const isP1 = playerBlade?.id === blade.id;
                   const isP2 = opponentBlade?.id === blade.id;
                   const isSelected = isP1 || isP2;
@@ -192,6 +209,16 @@ export default function GamePage() {
             />
           )}
 
+          {phase === 'royal-rumble' && (
+            <BattleView
+              playerBlade={roster.find(b => b.id === 'dragoon') || roster[0]}
+              opponentBlade={roster.find(b => b.id === 'valtryek') || roster[4]}
+              isRoyalRumble={true}
+              royalRumbleParticipants={roster}
+              onExit={() => setPhase('selection')}
+            />
+          )}
+
           {phase === 'tournament' && (
             <TournamentView onExit={() => setPhase('selection')} />
           )}
@@ -205,7 +232,7 @@ export default function GamePage() {
           <BeybladeCustomizer
             blade={playerBlade}
             onClose={() => setIsCustomizing(false)}
-            onUpdate={setPlayerBlade}
+            onUpdate={handleBladeUpdate}
           />
         )}
       </AnimatePresence>

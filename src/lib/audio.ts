@@ -16,6 +16,12 @@ class AudioSynthesizer {
         }
     }
 
+    resume() {
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
     private playTone(freq: number, type: OscillatorType, duration: number, startTime = 0) {
         if (!this.ctx || !this.gainNode) return;
 

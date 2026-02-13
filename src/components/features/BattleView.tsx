@@ -15,8 +15,11 @@ interface BattleViewProps {
     isTournament?: boolean;
 }
 
-export function BattleView({ playerBlade, opponentBlade, onExit, onMatchComplete, isTournament }: BattleViewProps) {
-    const { state, startBattle, resetBattle } = useBattleEngine(playerBlade, opponentBlade);
+// ...
+export function BattleView({ playerBlade, opponentBlade, onExit, onMatchComplete, isTournament, isRoyalRumble, royalRumbleParticipants }: BattleViewProps & { isRoyalRumble?: boolean; royalRumbleParticipants?: Beyblade[] }) {
+    const battleParticipants = isRoyalRumble && royalRumbleParticipants ? royalRumbleParticipants : [playerBlade, opponentBlade];
+    const { state, startBattle, resetBattle } = useBattleEngine(battleParticipants);
+    // ...
     const [shake, setShake] = useState(0);
     const [showResult, setShowResult] = useState(false);
 
@@ -89,7 +92,7 @@ export function BattleView({ playerBlade, opponentBlade, onExit, onMatchComplete
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none z-10" />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/20 pointer-events-none z-10" />
 
-                <BattleScene state={state} player={playerBlade} opponent={opponentBlade} />
+                <BattleScene state={state} blades={battleParticipants} />
             </div>
 
             {/* HUD Layer (UI Overlay) */}

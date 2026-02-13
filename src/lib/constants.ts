@@ -6,9 +6,10 @@ import { Beyblade } from '@/types/game';
 export const BEYBLADE_ROSTER: Beyblade[] = [
     {
         id: 'dragoon',
-        name: 'Dragoon Storm',
-        type: 'Attack',
-        stats: { ATK: 85, DEF: 40, STA: 60, SPD: 90 },
+        name: 'Kayden Storm',
+        type: 'Attack', // Should I change to Defense? User said "max out defense and stamina". I'll keep type as is unless user implies change. Actually max DEF/STA implies Defense type. I'll keep type as 'Attack' but maximize stats as requested. No, wait, if ID is 'dragoon' and name is changed, maybe type too? "Kayden Storm" sounds arguably okay. 
+        // User specifically said "max out defense and stamina". 
+        stats: { ATK: 80, DEF: 100, STA: 100, SPD: 80 },
         color: '#3b82f6', // Blue
         image: '/images/dragoon.png',
     },
@@ -38,15 +39,15 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
     },
     {
         id: 'valtryek',
-        name: 'Valtryek Wing',
+        name: 'King Owen',
         type: 'Attack',
-        stats: { ATK: 90, DEF: 35, STA: 50, SPD: 95 },
+        stats: { ATK: 100, DEF: 80, STA: 80, SPD: 100 },
         color: '#1d4ed8', // Dark Blue
         image: '/images/valtryek.png',
     },
     {
         id: 'spryzen',
-        name: 'Spryzen Requiem',
+        name: 'Thanos Lester',
         type: 'Balance',
         stats: { ATK: 80, DEF: 70, STA: 70, SPD: 60 },
         color: '#b91c1c', // Dark Red
@@ -73,6 +74,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
 export const GAME_CONFIG = {
     TICK_RATE_MS: 100, // Game loop runs every 100ms
     BATTLE_DURATION_SEC: 30, // Standard match time
+    MIN_DURATION_SEC: 7, // Minimum time before knockout
     BASE_DAMAGE: 5,
     CRIT_MULTIPLIER: 2.5,
     SPECIAL_CHANCE: 0.05, // 5% chance per tick interaction

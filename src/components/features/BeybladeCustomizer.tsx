@@ -20,7 +20,8 @@ interface CustomizerProps {
 export function BeybladeCustomizer({ blade, onUpdate, onClose }: CustomizerProps) {
     const [stats, setStats] = useState(blade.stats);
     const [color, setColor] = useState(blade.color);
-    const [previewBlade, setPreviewBlade] = useState({ ...blade, stats, color });
+    const [name, setName] = useState(blade.name);
+    const [previewBlade, setPreviewBlade] = useState({ ...blade, stats, color, name });
 
     // Sliders config
     const STAT_LABELS: Stat[] = ['ATK', 'DEF', 'STA', 'SPD'];
@@ -30,6 +31,11 @@ export function BeybladeCustomizer({ blade, onUpdate, onClose }: CustomizerProps
         setStats(newStats);
         setPreviewBlade(prev => ({ ...prev, stats: newStats }));
     };
+
+    const handleNameChange = (newName: string) => {
+        setName(newName);
+        setPreviewBlade(prev => ({ ...prev, name: newName }));
+    }
 
     const handleColorChange = (newColor: string) => {
         setColor(newColor);
@@ -54,7 +60,7 @@ export function BeybladeCustomizer({ blade, onUpdate, onClose }: CustomizerProps
     };
 
     const handleSave = () => {
-        onUpdate({ ...blade, stats, color });
+        onUpdate({ ...blade, name, stats, color });
         onClose();
     };
 
@@ -78,9 +84,13 @@ export function BeybladeCustomizer({ blade, onUpdate, onClose }: CustomizerProps
                 <div className="w-full md:w-1/3 p-6 border-r border-slate-700 bg-black/40 flex flex-col gap-6 relative z-10">
                     <div className="text-xs text-blue-400 font-mono mb-2">:: SYSTEM.ANALYSIS_MODE ::</div>
 
-                    <h2 className="text-4xl font-barlow font-black italic text-white uppercase break-words">
-                        {blade.name}
-                    </h2>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        className="text-4xl font-barlow font-black italic text-white uppercase break-words bg-transparent border-b-2 border-transparent focus:border-blue-500 outline-none placeholder-slate-600 mb-2 w-full"
+                        placeholder="ENTER NAME"
+                    />
 
                     {/* Radar Chart */}
                     <div className="flex justify-center py-4 bg-slate-900/50 rounded-lg border border-slate-800 relative">

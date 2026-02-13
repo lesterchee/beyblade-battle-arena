@@ -1,16 +1,16 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, PerspectiveCamera } from '@react-three/drei';
 import { BattleState, Beyblade } from '@/types/game';
+import { GAME_CONFIG } from '@/lib/constants';
 import * as THREE from 'three';
 import { Beyblade3D } from './Beyblade3D';
 
 interface BattleSceneProps {
     state: BattleState;
-    player: Beyblade;
-    opponent: Beyblade;
+    blades: Beyblade[];
 }
 
 // Physics Config
@@ -18,10 +18,10 @@ const FIELD_RADIUS = 14;
 const GRAVITY = 0.15; // Pull to center
 const BLADE_RADIUS = 2.0;
 
-export function BattleScene({ state, player, opponent }: BattleSceneProps) {
+export function BattleScene({ state, blades }: BattleSceneProps) {
     return (
         <Canvas shadows dpr={[1, 2]}>
-            <PerspectiveCamera makeDefault position={[0, 20, 30]} fov={45} />
+            <PerspectiveCamera makeDefault position={[0, 25, 35]} fov={45} />
             <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2.5} />
 
             {/* Lighting */}
@@ -34,7 +34,7 @@ export function BattleScene({ state, player, opponent }: BattleSceneProps) {
             <ArenaFloor />
 
             {/* Physics Manager & Beyblades */}
-            <BattleManager state={state} player={player} opponent={opponent} />
+            <BattleManager state={state} blades={blades} />
         </Canvas>
     );
 }
@@ -50,9 +50,16 @@ interface Spark {
     color: string;
 }
 
-function BattleManager({ state, player, opponent }: BattleSceneProps) {
-    const playerMesh = useRef<THREE.Group>(null);
-    const opponentMesh = useRef<THREE.Group>(null);
+interface PhysicsBody {
+    id: string;
+    pos: THREE.Vector3;
+    vel: THREE.Vector3;
+    mass: number;
+}
+
+function BattleManager({ state, blades }: BattleSceneProps) {
+    // We use a Map to store refs for dynamic rendering
+    const meshesRef = useRef<Map<string, THREE.Group>>(new Map());
 
     // Sparks State
     const [sparks, setSparks] = useState<Spark[]>([]);
@@ -61,7 +68,6 @@ function BattleManager({ state, player, opponent }: BattleSceneProps) {
     const createSparks = (x: number, z: number, intensity: number) => {
         const newSparks: Spark[] = [];
         const count = Math.floor(10 * intensity);
-
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 0.5 * intensity;
@@ -72,48 +78,98 @@ function BattleManager({ state, player, opponent }: BattleSceneProps) {
                 vx: Math.cos(angle) * speed,
                 vz: Math.sin(angle) * speed,
                 life: 1.0,
-                color: Math.random() > 0.5 ? '#facc15' : '#f97316' // Yellow/Orange
+                color: Math.random() > 0.5 ? '#facc15' : '#f97316'
             });
         }
         setSparks(prev => [...prev, ...newSparks]);
     };
 
     // Physics State
-    const physics = useRef({
-        p1: {
-            pos: new THREE.Vector3(-6, 0, -2),
-            vel: new THREE.Vector3(0, 0, 0),
-            mass: 1
-        },
-        p2: {
-            pos: new THREE.Vector3(6, 0, 2),
-            vel: new THREE.Vector3(0, 0, 0),
-            mass: 1
-        }
-    });
-
+    const physics = useRef<Record<string, PhysicsBody>>({});
+    const lastCollisionTime = useRef<Map<string, number>>(new Map());
     const initialized = useRef(false);
-    const lastCollisionTime = useRef(0);
 
+    // Initialize/Reset Physics
     useEffect(() => {
-        // Reset physics on new battle start
         if (state.status === 'fighting') {
-            physics.current.p1.mass = 1 + (player.stats.DEF / 100);
-            physics.current.p2.mass = 1 + (opponent.stats.DEF / 100);
+            if (initialized.current) return;
 
-            physics.current.p1.pos.set(-6, 0, -2);
-            physics.current.p2.pos.set(6, 0, 2);
+            const newPhysics: Record<string, PhysicsBody> = {};
+            const count = blades.length;
+            // ... (rest of logic) ...
 
-            const p1Spd = 0.3 + (player.stats.SPD / 300);
-            const p2Spd = 0.3 + (opponent.stats.SPD / 300);
+            if (count === 2) {
+                // Classic VS Mode: Authentic Physics with Type Differentiation
+                const p1 = blades[0];
+                const p2 = blades[1];
 
-            physics.current.p1.vel.set(0.1, 0, p1Spd);
-            physics.current.p2.vel.set(-0.1, 0, -p2Spd);
+                // Helper to get launch vectors based on type
+                const getLaunch = (blade: Beyblade, sideMultiplier: number) => {
+                    const isAttack = blade.type === 'Attack' || blade.type === 'Balance';
+                    const spd = blade.stats.SPD / 100;
 
-            initialized.current = true;
+                    if (isAttack) {
+                        // flower pattern: High tangential speed to ride the ridge
+                        return {
+                            pos: new THREE.Vector3(-8 * sideMultiplier, 0, -4 * sideMultiplier), // Far out
+                            vel: new THREE.Vector3(0.15 * sideMultiplier, 0, (0.5 + spd * 0.2)), // Very high orbit speed
+                        };
+                    } else {
+                        // defense/stamina: Center holder
+                        return {
+                            pos: new THREE.Vector3(-5 * sideMultiplier, 0, -2 * sideMultiplier), // Closer in
+                            vel: new THREE.Vector3(0.05 * sideMultiplier, 0, (0.2 + spd * 0.1)), // Low speed, falls to center
+                        };
+                    }
+                };
+
+                const p1Launch = getLaunch(p1, 1);
+                const p2Launch = getLaunch(p2, -1);
+
+                newPhysics[p1.id] = {
+                    id: p1.id,
+                    pos: p1Launch.pos,
+                    vel: p1Launch.vel,
+                    mass: 1 + (p1.stats.DEF / 100)
+                };
+
+                newPhysics[p2.id] = {
+                    id: p2.id,
+                    pos: p2Launch.pos,
+                    vel: p2Launch.vel,
+                    mass: 1 + (p2.stats.DEF / 100)
+                };
+            } else {
+                // Royal Rumble: Circular Distribution
+                blades.forEach((blade, index) => {
+                    const angle = (index / count) * Math.PI * 2;
+                    const startRadius = 9 + (count > 4 ? 2 : 0); // Wider circle
+
+                    newPhysics[blade.id] = {
+                        id: blade.id,
+                        pos: new THREE.Vector3(Math.cos(angle) * startRadius, 0, Math.sin(angle) * startRadius),
+                        vel: new THREE.Vector3(0, 0, 0),
+                        mass: 1 + (blade.stats.DEF / 100)
+                    };
+
+                    // Swirl Logic: Combine inward pull with tangential orbit
+                    const spd = 0.25 + (blade.stats.SPD / 400);
+                    const toCenter = new THREE.Vector3(-Math.cos(angle), 0, -Math.sin(angle)); // Inward
+                    const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle)); // Counter-clockwise
+
+                    newPhysics[blade.id].vel.copy(toCenter).multiplyScalar(spd * 0.5)
+                        .add(tangent.multiplyScalar(spd * 0.5))
+                        .add(new THREE.Vector3((Math.random() - 0.5) * 0.05, 0, (Math.random() - 0.5) * 0.05));
+                });
+            }
+
+            physics.current = newPhysics;
             setSparks([]);
+            initialized.current = true;
+        } else {
+            initialized.current = false;
         }
-    }, [state.status, player, opponent]);
+    }, [state.status, blades]);
 
     useFrame((_, delta) => {
         // Update Sparks
@@ -121,140 +177,151 @@ function BattleManager({ state, player, opponent }: BattleSceneProps) {
             ...s,
             x: s.x + s.vx,
             z: s.z + s.vz,
-            life: s.life - delta * 3, // Fade out speed
+            life: s.life - delta * 3,
             vx: s.vx * 0.9,
             vz: s.vz * 0.9
         })).filter(s => s.life > 0));
 
-        if (!playerMesh.current || !opponentMesh.current) return;
-
-        const p1 = physics.current.p1;
-        const p2 = physics.current.p2;
-
         if (state.status === 'fighting') {
-            // 1. Apply Forces (Gravity/Slope)
-            const applySlope = (obj: typeof p1) => {
-                const dist = Math.sqrt(obj.pos.x ** 2 + obj.pos.z ** 2);
+            const bodies = Object.values(physics.current);
+            const activeBodies = bodies.filter(b => !state.participants[b.id]?.isDead);
+
+            activeBodies.forEach(b => {
+                // 1. Forces
+                const dist = Math.sqrt(b.pos.x ** 2 + b.pos.z ** 2);
                 if (dist > 0) {
                     const force = GRAVITY * (dist / FIELD_RADIUS);
-                    const angle = Math.atan2(obj.pos.z, obj.pos.x);
-                    obj.vel.x -= Math.cos(angle) * force * 0.1;
-                    obj.vel.z -= Math.sin(angle) * force * 0.1;
+                    const angle = Math.atan2(b.pos.z, b.pos.x);
+                    b.vel.x -= Math.cos(angle) * force * 0.1;
+                    b.vel.z -= Math.sin(angle) * force * 0.1;
                 }
-            };
-            applySlope(p1);
-            applySlope(p2);
 
-            // 2. Movement
-            p1.pos.add(p1.vel);
-            p2.pos.add(p2.vel);
+                // 2. Movement
+                b.pos.add(b.vel);
 
-            // 3. Wall Collision
-            const checkWall = (obj: typeof p1) => {
-                const dist = Math.sqrt(obj.pos.x ** 2 + obj.pos.z ** 2);
+                // 3. Wall Collision
+                // 3. Wall Collision
+                const isEarlyGame = (GAME_CONFIG.BATTLE_DURATION_SEC - state.timer) < GAME_CONFIG.MIN_DURATION_SEC;
+                // Actually simpler: if state.status is fighting and timer is high.
+                // We'll revert to simple physics reflect but with a hard clamp if early game.
+
                 if (dist > FIELD_RADIUS - BLADE_RADIUS) {
-                    const normal = new THREE.Vector3(-obj.pos.x, 0, -obj.pos.z).normalize();
-                    const dot = obj.vel.dot(normal);
+                    const normal = new THREE.Vector3(-b.pos.x, 0, -b.pos.z).normalize();
 
-                    if (dot < 0) {
-                        obj.vel.reflect(normal).multiplyScalar(0.7);
+                    if (b.vel.dot(normal) < 0) {
+                        // Standard bounce
+                        b.vel.reflect(normal).multiplyScalar(0.7);
                         const overlap = dist - (FIELD_RADIUS - BLADE_RADIUS);
-                        obj.pos.add(normal.multiplyScalar(overlap));
+                        b.pos.add(normal.multiplyScalar(overlap));
+                    }
+
+                    // SAFETY NET: If early game, Force pull back if they are somehow still out
+                    if (isEarlyGame && dist > FIELD_RADIUS - 0.5) {
+                        b.vel.add(normal.multiplyScalar(0.5)); // Hard push in
+                        b.pos.add(normal.multiplyScalar(0.5));
                     }
                 }
-            };
-            checkWall(p1);
-            checkWall(p2);
+            });
 
-            // 4. Blade Collision
-            const dx = p2.pos.x - p1.pos.x;
-            const dz = p2.pos.z - p1.pos.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
-            const minDist = BLADE_RADIUS * 2;
+            // 4. Blade vs Blade Collision (Naive O(N^2))
+            for (let i = 0; i < activeBodies.length; i++) {
+                for (let j = i + 1; j < activeBodies.length; j++) {
+                    const b1 = activeBodies[i];
+                    const b2 = activeBodies[j];
 
-            if (dist < minDist) {
-                // Collision!
-                const now = Date.now();
-                if (now - lastCollisionTime.current > 100) { // Limit spark frequency
-                    const midX = (p1.pos.x + p2.pos.x) / 2;
-                    const midZ = (p1.pos.z + p2.pos.z) / 2;
-                    createSparks(midX, midZ, 1.5);
-                    lastCollisionTime.current = now;
+                    const dx = b2.pos.x - b1.pos.x;
+                    const dz = b2.pos.z - b1.pos.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    const minDist = BLADE_RADIUS * 2;
+
+                    if (dist < minDist) {
+                        // Collision
+                        const now = Date.now();
+                        const pairId = [b1.id, b2.id].sort().join('-');
+                        const lastTime = lastCollisionTime.current.get(pairId) || 0;
+
+                        if (now - lastTime > 100) {
+                            const midX = (b1.pos.x + b2.pos.x) / 2;
+                            const midZ = (b1.pos.z + b2.pos.z) / 2;
+                            createSparks(midX, midZ, 1.5);
+                            lastCollisionTime.current.set(pairId, now);
+                        }
+
+                        const nx = dx / dist;
+                        const nz = dz / dist;
+                        const rvx = b2.vel.x - b1.vel.x;
+                        const rvz = b2.vel.z - b1.vel.z;
+                        const velAlongNormal = rvx * nx + rvz * nz;
+
+                        if (velAlongNormal < 0) {
+                            const restitution = 1.5;
+                            let impulse = -(1 + restitution) * velAlongNormal;
+                            impulse /= (1 / b1.mass + 1 / b2.mass);
+
+                            const impulseX = impulse * nx;
+                            const impulseZ = impulse * nz;
+                            const repulsion = 0.5;
+
+                            b1.vel.x -= (impulseX + nx * -repulsion) / b1.mass;
+                            b1.vel.z -= (impulseZ + nz * -repulsion) / b1.mass;
+                            b2.vel.x += (impulseX + nx * repulsion) / b2.mass;
+                            b2.vel.z += (impulseZ + nz * repulsion) / b2.mass;
+                        }
+
+                        const overlap = minDist - dist;
+                        b1.pos.x -= nx * overlap * 0.51;
+                        b1.pos.z -= nz * overlap * 0.51;
+                        b2.pos.x += nx * overlap * 0.51;
+                        b2.pos.z += nz * overlap * 0.51;
+                    }
                 }
-
-                const nx = dx / dist;
-                const nz = dz / dist;
-
-                const rvx = p2.vel.x - p1.vel.x;
-                const rvz = p2.vel.z - p1.vel.z;
-                const velAlongNormal = rvx * nx + rvz * nz;
-
-                if (velAlongNormal < 0) {
-                    const restitution = 1.5;
-                    let j = -(1 + restitution) * velAlongNormal;
-                    j /= (1 / p1.mass + 1 / p2.mass);
-
-                    const impulseX = j * nx;
-                    const impulseZ = j * nz;
-                    const repulsion = 0.5;
-
-                    p1.vel.x -= (impulseX + nx * -repulsion) / p1.mass;
-                    p1.vel.z -= (impulseZ + nz * -repulsion) / p1.mass;
-                    p2.vel.x += (impulseX + nx * repulsion) / p2.mass;
-                    p2.vel.z += (impulseZ + nz * repulsion) / p2.mass;
-                }
-
-                const overlap = minDist - dist;
-                const separationX = nx * overlap * 0.51;
-                const separationZ = nz * overlap * 0.51;
-
-                p1.pos.x -= separationX;
-                p1.pos.z -= separationZ;
-                p2.pos.x += separationX;
-                p2.pos.z += separationZ;
             }
         }
 
-        // 5. Update Meshes & Rotation
-        playerMesh.current.position.set(p1.pos.x, 0, p1.pos.z);
-        opponentMesh.current.position.set(p2.pos.x, 0, p2.pos.z);
+        // 5. Update Meshes
+        blades.forEach(blade => {
+            const mesh = meshesRef.current.get(blade.id);
+            const physicsBody = physics.current[blade.id];
 
-        const p1HealthRatio = Math.max(0, state.playerHP / state.playerMaxHP);
-        const p2HealthRatio = Math.max(0, state.opponentHP / state.opponentMaxHP);
+            if (mesh && physicsBody) {
+                mesh.position.set(physicsBody.pos.x, 0, physicsBody.pos.z);
 
-        const p1SpinSpd = 0.1 + (p1HealthRatio * 0.3);
-        const p2SpinSpd = 0.1 + (p2HealthRatio * 0.3);
+                const data = state.participants[blade.id];
+                const hpRatio = data ? Math.max(0, data.hp / data.maxHP) : 0;
+                const spinSpd = 0.1 + (hpRatio * 0.3);
 
-        if (state.status !== 'finished') {
-            playerMesh.current.rotation.y += p1SpinSpd;
-            opponentMesh.current.rotation.y -= p2SpinSpd;
-
-            playerMesh.current.rotation.x = p1.vel.z * 1.5;
-            playerMesh.current.rotation.z = -p1.vel.x * 1.5;
-            opponentMesh.current.rotation.x = p2.vel.z * 1.5;
-            opponentMesh.current.rotation.z = -p2.vel.x * 1.5;
-        } else {
-            const t = Date.now() / 1000;
-            if (state.winner === player.id) {
-                playerMesh.current.position.y = Math.abs(Math.sin(t * 10)) * 1.5;
-                playerMesh.current.rotation.y += 0.2;
-                opponentMesh.current.rotation.x = Math.PI / 4;
-                opponentMesh.current.position.y = 0;
-            } else if (state.winner === opponent.id) {
-                opponentMesh.current.position.y = Math.abs(Math.sin(t * 10)) * 1.5;
-                opponentMesh.current.rotation.y -= 0.2;
-                playerMesh.current.rotation.x = Math.PI / 4;
-                playerMesh.current.position.y = 0;
+                // Spin
+                if (state.status !== 'finished' && !data?.isDead) {
+                    mesh.rotation.y += spinSpd;
+                    // Tilt
+                    mesh.rotation.x = physicsBody.vel.z * 1.5;
+                    mesh.rotation.z = -physicsBody.vel.x * 1.5;
+                } else if (state.winner === blade.id && state.status === 'finished') {
+                    // Victory Dance
+                    const t = Date.now() / 1000;
+                    mesh.position.y = Math.abs(Math.sin(t * 10)) * 1.5;
+                    mesh.rotation.y += 0.2;
+                } else if (data?.isDead) {
+                    // Dead state - stop spinning, maybe tip over
+                    if (mesh.rotation.x < Math.PI / 2) mesh.rotation.x += 0.05;
+                }
             }
-        }
+        });
     });
 
     return (
         <>
-            <Beyblade3D ref={playerMesh} blade={player} />
-            <Beyblade3D ref={opponentMesh} blade={opponent} />
+            {blades.map(blade => (
+                <Beyblade3D
+                    key={blade.id}
+                    ref={(el) => {
+                        if (el) meshesRef.current.set(blade.id, el);
+                        else meshesRef.current.delete(blade.id);
+                    }}
+                    blade={blade}
+                />
+            ))}
 
-            {/* Sparks Rendering */}
             <group>
                 {sparks.map(s => (
                     <mesh key={s.id} position={[s.x, 0.5, s.z]}>
@@ -282,5 +349,3 @@ function ArenaFloor() {
         </group>
     );
 }
-
-

@@ -19,7 +19,7 @@ export function BeybladeCard({ blade, isSelected, onClick, disabled }: BeybladeC
                 "relative overflow-hidden transition-all duration-300 group select-none min-h-[320px] flex flex-col items-center",
                 isSelected
                     ? "border-blue-500 bg-blue-900/40 shadow-[0_0_30px_rgba(59,130,246,0.5)] scale-105 z-10"
-                    : "hover:bg-slate-800/80 opacity-90 hover:opacity-100",
+                    : "hover:bg-slate-800/80 hover:scale-105 opacity-100", // Constant opacity
                 disabled && "opacity-40 cursor-not-allowed grayscale"
             )}
             hover={!disabled && !isSelected}
@@ -59,11 +59,11 @@ export function BeybladeCard({ blade, isSelected, onClick, disabled }: BeybladeC
                 </div>
 
                 {/* Tech Stats Grid */}
-                <div className="w-full space-y-2 mt-2 bg-black/40 p-3 clip-path-polygon">
-                    <StatRow label="ATK" value={blade.stats.ATK} color="bg-red-500" />
-                    <StatRow label="DEF" value={blade.stats.DEF} color="bg-green-500" />
-                    <StatRow label="SPD" value={blade.stats.SPD} color="bg-yellow-500" />
-                    <StatRow label="STA" value={blade.stats.STA} color="bg-blue-500" />
+                <div className="w-full space-y-2 mt-2 bg-black/40 p-3">
+                    <StatBar label="ATK" value={blade.stats.ATK} color="#ef4444" />
+                    <StatBar label="DEF" value={blade.stats.DEF} color="#22c55e" />
+                    <StatBar label="SPD" value={blade.stats.SPD} color="#eab308" />
+                    <StatBar label="STA" value={blade.stats.STA} color="#3b82f6" />
                 </div>
             </div>
 
@@ -76,26 +76,33 @@ export function BeybladeCard({ blade, isSelected, onClick, disabled }: BeybladeC
     );
 }
 
-function StatRow({ label, value, color }: { label: string, value: number, color: string }) {
+function StatBar({ label, value, color }: { label: string, value: number, color: string }) {
     // Generate hex blocks
     const maxBlocks = 10;
-    const filledBlocks = Math.ceil((value / 100) * maxBlocks);
+    const numericValue = Number(value) || 0;
+    const filledBlocks = Math.min(maxBlocks, Math.ceil((numericValue / 100) * maxBlocks));
 
     return (
-        <div className="flex items-center gap-2">
-            <span className="w-8 font-barlow font-bold italic text-slate-400 text-sm">{label}</span>
-            <div className="flex-1 flex gap-1 h-3">
-                {Array.from({ length: maxBlocks }).map((_, i) => (
-                    <div
-                        key={i}
-                        className={cn(
-                            "flex-1 h-full transform -skew-x-12",
-                            i < filledBlocks ? color : "bg-slate-800"
-                        )}
-                    />
-                ))}
+        <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center w-full px-2 relative">
+            <span className="font-barlow font-bold italic text-slate-400 text-sm text-left">{label}</span>
+            {/* Bars Container */}
+            <div className="flex gap-1 h-3 w-full relative min-w-0">
+                {Array.from({ length: maxBlocks }).map((_, i) => {
+                    const isFilled = i < filledBlocks;
+                    return (
+                        <div
+                            key={i}
+                            className="flex-1 h-full skew-x-[-12deg] transition-all duration-300"
+                            style={{
+                                background: isFilled ? color : '#334155',
+                                boxShadow: isFilled ? '0 0 4px rgba(255, 255, 255, 0.5)' : 'none',
+                                border: '1px solid rgba(255,255,255,0.1)'
+                            }}
+                        />
+                    );
+                })}
             </div>
-            <span className="w-6 text-right font-mono text-xs text-slate-500">{value}</span>
-        </div>
+            <span className="font-mono text-xs text-slate-500 text-right">{numericValue}</span>
+        </div >
     );
 }

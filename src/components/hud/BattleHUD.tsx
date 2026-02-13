@@ -54,10 +54,22 @@ export function BattleHUD({ state, player, opponent }: BattleHUDProps) {
             {/* Bottom Bar: Health */}
             <div className="w-full grid grid-cols-2 gap-8 md:gap-32 items-end">
                 {/* Player HP */}
-                <HealthBar blade={player} hp={state.playerHP} maxHp={state.playerMaxHP} align="left" color="blue" />
+                <HealthBar
+                    blade={player}
+                    hp={state.participants[player.id]?.hp ?? state.playerHP}
+                    maxHp={state.participants[player.id]?.maxHP ?? state.playerMaxHP}
+                    align="left"
+                    color="blue"
+                />
 
                 {/* Opponent HP */}
-                <HealthBar blade={opponent} hp={state.opponentHP} maxHp={state.opponentMaxHP} align="right" color="red" />
+                <HealthBar
+                    blade={opponent}
+                    hp={state.participants[opponent.id]?.hp ?? state.opponentHP}
+                    maxHp={state.participants[opponent.id]?.maxHP ?? state.opponentMaxHP}
+                    align="right"
+                    color="red"
+                />
             </div>
 
         </div>
