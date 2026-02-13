@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  /* Pastel Preschool Palette */
+  --background: #FFFDF5;
+  /* Creamy white */
+  --foreground: #4A4A4A;
+  /* Soft dark gray */
+
+  --primary: #FFB7B2;
+  /* Pastel Pink */
+  --primary-foreground: #FFF;
+
+  --secondary: #B5EAD7;
+  /* Pastel Green */
+  --secondary-foreground: #4A4A4A;
+
+  --accent: #C7CEEA;
+  /* Pastel Blue */
+  --accent-foreground: #4A4A4A;
+
+  --highlight: #E2F0CB;
+  /* Pastel Lime/Yellow */
+
+  --card: #FFFFFF;
+  --card-foreground: #4A4A4A;
+
+  --border: #E0E0E0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

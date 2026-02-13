@@ -15,15 +15,15 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
     },
     {
         id: 'dranzer',
-        name: 'Dranzer Flame',
+        name: 'Princess Lara',
         type: 'Balance',
         stats: { ATK: 70, DEF: 60, STA: 70, SPD: 75 },
         color: '#ef4444', // Red
-        image: '/images/dranzer.png',
+        image: '/images/princess_lara.png',
     },
     {
         id: 'driger',
-        name: 'Driger Thunder',
+        name: 'TiTa Thunder',
         type: 'Balance',
         stats: { ATK: 75, DEF: 55, STA: 65, SPD: 80 },
         color: '#a855f7', // Purple/White
@@ -31,7 +31,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
     },
     {
         id: 'draciel',
-        name: 'Draciel Fortress',
+        name: 'Jacob Fortress',
         type: 'Defense',
         stats: { ATK: 40, DEF: 95, STA: 80, SPD: 30 },
         color: '#22c55e', // Green
@@ -55,7 +55,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
     },
     {
         id: 'luinor',
-        name: 'Luinor Destroy',
+        name: 'Queen Guen',
         type: 'Attack',
         stats: { ATK: 95, DEF: 30, STA: 40, SPD: 85 },
         color: '#fafafa', // White/Gold
@@ -63,7 +63,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
     },
     {
         id: 'achilles',
-        name: 'Achilles Hero',
+        name: 'Peter Hero',
         type: 'Balance',
         stats: { ATK: 75, DEF: 75, STA: 75, SPD: 65 },
         color: '#eab308', // Gold
@@ -74,7 +74,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
 export const GAME_CONFIG = {
     TICK_RATE_MS: 100, // Game loop runs every 100ms
     BATTLE_DURATION_SEC: 30, // Standard match time
-    MIN_DURATION_SEC: 7, // Minimum time before knockout
+    MIN_DURATION_SEC: 5, // Minimum time before knockout
     BASE_DAMAGE: 5,
     CRIT_MULTIPLIER: 2.5,
     SPECIAL_CHANCE: 0.05, // 5% chance per tick interaction
