@@ -7,9 +7,8 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
     {
         id: 'dragoon',
         name: 'Kayden Storm',
-        type: 'Attack', // Should I change to Defense? User said "max out defense and stamina". I'll keep type as is unless user implies change. Actually max DEF/STA implies Defense type. I'll keep type as 'Attack' but maximize stats as requested. No, wait, if ID is 'dragoon' and name is changed, maybe type too? "Kayden Storm" sounds arguably okay. 
-        // User specifically said "max out defense and stamina". 
-        stats: { ATK: 80, DEF: 100, STA: 100, SPD: 80 },
+        type: 'Stamina', // Changed to Stamina based on stats
+        stats: { ATK: 20, DEF: 85, STA: 100, SPD: 100 },
         color: '#3b82f6', // Blue
         image: '/images/dragoon.png',
     },
@@ -43,7 +42,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         type: 'Attack',
         stats: { ATK: 100, DEF: 80, STA: 80, SPD: 100 },
         color: '#1d4ed8', // Dark Blue
-        image: '/images/valtryek.png',
+        image: '/images/king_owen.png',
     },
     {
         id: 'spryzen',
@@ -59,7 +58,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         type: 'Attack',
         stats: { ATK: 95, DEF: 30, STA: 40, SPD: 85 },
         color: '#fafafa', // White/Gold
-        image: '/images/luinor.png',
+        image: '/images/queen_guen.png',
     },
     {
         id: 'achilles',
