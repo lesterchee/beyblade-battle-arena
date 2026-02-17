@@ -42,7 +42,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         type: 'Attack',
         stats: { ATK: 100, DEF: 80, STA: 80, SPD: 100 },
         color: '#1d4ed8', // Dark Blue
-        image: '/images/king_owen.png',
+        image: '/images/king-owen.png',
     },
     {
         id: 'spryzen',
@@ -58,7 +58,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         type: 'Attack',
         stats: { ATK: 95, DEF: 30, STA: 40, SPD: 85 },
         color: '#fafafa', // White/Gold
-        image: '/images/queen_guen.png',
+        image: '/images/queen-guen.png',
     },
     {
         id: 'achilles',
