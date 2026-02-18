@@ -8,7 +8,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'dragoon',
         name: 'Kayden Storm',
         type: 'Stamina', // Changed to Stamina based on stats
-        stats: { ATK: 20, DEF: 85, STA: 100, SPD: 100 },
+        stats: { ATK: 75, DEF: 85, STA: 100, SPD: 50 },
         color: '#3b82f6', // Blue
         image: '/images/dragoon.png',
     },
@@ -16,7 +16,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'dranzer',
         name: 'Princess Lara',
         type: 'Balance',
-        stats: { ATK: 70, DEF: 60, STA: 70, SPD: 75 },
+        stats: { ATK: 70, DEF: 60, STA: 70, SPD: 50 },
         color: '#ef4444', // Red
         image: '/images/princess_lara.png',
     },
@@ -24,7 +24,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'driger',
         name: 'TiTa Thunder',
         type: 'Balance',
-        stats: { ATK: 75, DEF: 55, STA: 65, SPD: 80 },
+        stats: { ATK: 75, DEF: 55, STA: 65, SPD: 50 },
         color: '#a855f7', // Purple/White
         image: '/images/driger.png',
     },
@@ -32,7 +32,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'draciel',
         name: 'Jacob Fortress',
         type: 'Defense',
-        stats: { ATK: 40, DEF: 95, STA: 80, SPD: 30 },
+        stats: { ATK: 40, DEF: 95, STA: 80, SPD: 50 },
         color: '#22c55e', // Green
         image: '/images/draciel.png',
     },
@@ -40,7 +40,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'valtryek',
         name: 'King Owen',
         type: 'Attack',
-        stats: { ATK: 100, DEF: 80, STA: 80, SPD: 100 },
+        stats: { ATK: 100, DEF: 80, STA: 80, SPD: 50 },
         color: '#1d4ed8', // Dark Blue
         image: '/images/king-owen.png',
     },
@@ -48,7 +48,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'spryzen',
         name: 'Thanos Lester',
         type: 'Balance',
-        stats: { ATK: 80, DEF: 70, STA: 70, SPD: 60 },
+        stats: { ATK: 80, DEF: 70, STA: 70, SPD: 50 },
         color: '#b91c1c', // Dark Red
         image: '/images/spryzen.png',
     },
@@ -56,7 +56,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'luinor',
         name: 'Queen Guen',
         type: 'Attack',
-        stats: { ATK: 95, DEF: 30, STA: 40, SPD: 85 },
+        stats: { ATK: 95, DEF: 30, STA: 40, SPD: 50 },
         color: '#fafafa', // White/Gold
         image: '/images/queen-guen.png',
     },
@@ -64,7 +64,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         id: 'achilles',
         name: 'Peter Hero',
         type: 'Balance',
-        stats: { ATK: 75, DEF: 75, STA: 75, SPD: 65 },
+        stats: { ATK: 75, DEF: 75, STA: 75, SPD: 50 },
         color: '#eab308', // Gold
         image: '/images/achilles.png',
     },
