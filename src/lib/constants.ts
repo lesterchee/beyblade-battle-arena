@@ -9,7 +9,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'Kayden Storm',
         type: 'Stamina', // Changed to Stamina based on stats
         stats: { ATK: 75, DEF: 85, STA: 100, SPD: 50 },
-        color: '#3b82f6', // Blue
+        color: '#06b6d4', // Cyan (Kayden Storm)
         image: '/images/dragoon.png',
     },
     {
@@ -17,7 +17,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'Princess Lara',
         type: 'Balance',
         stats: { ATK: 70, DEF: 60, STA: 70, SPD: 50 },
-        color: '#ef4444', // Red
+        color: '#d946ef', // Pink/Purple (Princess Lara)
         image: '/images/princess_lara.png',
     },
     {
@@ -25,7 +25,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'TiTa Thunder',
         type: 'Balance',
         stats: { ATK: 75, DEF: 55, STA: 65, SPD: 50 },
-        color: '#a855f7', // Purple/White
+        color: '#e2e8f0', // White/Silver (TiTa Thunder)
         image: '/images/driger.png',
     },
     {
@@ -33,7 +33,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'Jacob Fortress',
         type: 'Defense',
         stats: { ATK: 40, DEF: 95, STA: 80, SPD: 50 },
-        color: '#22c55e', // Green
+        color: '#16a34a', // Green (Jacob Fortress)
         image: '/images/draciel.png',
     },
     {
@@ -41,7 +41,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'King Owen',
         type: 'Attack',
         stats: { ATK: 100, DEF: 80, STA: 80, SPD: 50 },
-        color: '#1d4ed8', // Dark Blue
+        color: '#eab308', // Gold (King Owen)
         image: '/images/king-owen.png',
     },
     {
@@ -49,7 +49,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'Thanos Lester',
         type: 'Balance',
         stats: { ATK: 80, DEF: 70, STA: 70, SPD: 50 },
-        color: '#b91c1c', // Dark Red
+        color: '#ef4444', // Red (Thanos Lester)
         image: '/images/spryzen.png',
     },
     {
@@ -57,7 +57,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'Queen Guen',
         type: 'Attack',
         stats: { ATK: 95, DEF: 30, STA: 40, SPD: 50 },
-        color: '#fafafa', // White/Gold
+        color: '#8b5cf6', // Violet (Queen Guen - changed from white as TiTa is white)
         image: '/images/queen-guen.png',
     },
     {
@@ -65,7 +65,7 @@ export const BEYBLADE_ROSTER: Beyblade[] = [
         name: 'Peter Hero',
         type: 'Balance',
         stats: { ATK: 75, DEF: 75, STA: 75, SPD: 50 },
-        color: '#eab308', // Gold
+        color: '#f97316', // Orange (Peter Hero)
         image: '/images/achilles.png',
     },
 ];

@@ -80,9 +80,26 @@ export function BattleView({ playerBlade, opponentBlade, onExit, onMatchComplete
         }
     }, [showResult, isTournament, onMatchComplete, state.winner]);
 
+    // Dynamic Aura/Glow based on battle state
+    // If there's a winner, glow their color. If fighting, blend both.
+    const containerGlow = state.winner
+        ? (state.winner === playerBlade.id ? playerBlade.color : opponentBlade.color)
+        : null; // Null implies default or dual glow logic if we want
+
+    // Generate Video Prompt (Injected Logic)
+    useEffect(() => {
+        const prompt = `A high-speed battle between a ${playerBlade.color} spinning top and a ${opponentBlade.color} spinning top in a metal arena with sparks flying.`;
+        console.log("Video Prompt Injected:", prompt);
+    }, [playerBlade.color, opponentBlade.color]);
+
     return (
         <motion.div
-            className="relative w-[80vw] md:w-full h-[80vh] mx-auto bg-black rounded-sm overflow-hidden border-4 border-black shadow-2xl"
+            className="relative w-[80vw] md:w-full h-[80vh] mx-auto bg-black rounded-sm overflow-hidden border-4 border-black transition-shadow duration-1000"
+            style={{
+                boxShadow: containerGlow
+                    ? `0 0 50px ${containerGlow}80` // Winner Glow
+                    : `0 0 30px ${playerBlade.color}40, 0 0 30px ${opponentBlade.color}40` // Dual Battle Glow
+            }}
             animate={{ x: shake > 0 ? [0, -10, 10, -5, 5, 0] : 0 }}
             transition={{ duration: 0.2 }}
         >
@@ -114,7 +131,10 @@ export function BattleView({ playerBlade, opponentBlade, onExit, onMatchComplete
                             animate={{ scale: 1, rotate: 0 }}
                             className="text-center"
                         >
-                            <h2 className="text-8xl font-barlow font-black italic text-yellow-500 mb-6 drop-shadow-[0_0_30px_rgba(234,179,8,0.8)] stroke-black text-stroke">
+                            <h2
+                                className="text-8xl font-barlow font-black italic mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] stroke-black text-stroke"
+                                style={{ color: containerGlow || '#eab308' }}
+                            >
                                 {state.winner === 'draw' ? 'DRAW!' : 'VICTORY!'}
                             </h2>
 
