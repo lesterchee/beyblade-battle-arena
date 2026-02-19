@@ -45,12 +45,18 @@ export interface BattleState {
   status: 'idle' | 'fighting' | 'finished';
   winner: string | null; // Blade ID or 'draw'
   playerId: string;
-  opponentId: string; // Track P1/P2 explicitly
+  opponentId: string; // Track P1/P2 explicitly (Primary/Captain)
+  teams: {
+    player: string[]; // Array of IDs belonging to Player team
+    opponent: string[]; // Array of IDs belonging to Opponent team
+  };
+  gameMode: '1v1' | '2v2' | 'royal-rumble';
   participants: Record<string, {
     hp: number;
     maxHP: number;
     name: string;
     image?: string;
     isDead: boolean;
+    teamId: 'player' | 'opponent'; // Track team association directly on participant
   }>;
 }

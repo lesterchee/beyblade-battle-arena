@@ -12,29 +12,58 @@ type Action =
 
 const INITIAL_HP = 1000;
 
-const createInitialState = (blades: Beyblade[]): BattleState => {
+// Initial state creation supporting Teams
+const createInitialState = (
+    teamA: Beyblade[],
+    teamB: Beyblade[],
+    gameMode: '1v1' | '2v2' | 'royal-rumble' = '1v1'
+): BattleState => {
     const participants: BattleState['participants'] = {};
-    blades.forEach(b => {
+    const playerIds: string[] = [];
+    const opponentIds: string[] = [];
+
+    // Initialize Team A (Player)
+    teamA.forEach(b => {
+        playerIds.push(b.id);
         participants[b.id] = {
-            hp: INITIAL_HP, // Could scale with stamina
+            hp: INITIAL_HP,
             maxHP: INITIAL_HP,
             name: b.name,
             image: b.image,
-            isDead: false
+            isDead: false,
+            teamId: 'player'
+        };
+    });
+
+    // Initialize Team B (Opponent)
+    teamB.forEach(b => {
+        opponentIds.push(b.id);
+        participants[b.id] = {
+            hp: INITIAL_HP,
+            maxHP: INITIAL_HP,
+            name: b.name,
+            image: b.image,
+            isDead: false,
+            teamId: 'opponent'
         };
     });
 
     return {
-        playerHP: INITIAL_HP,
+        playerHP: INITIAL_HP, // Visual Aggregate or Captain HP
         opponentHP: INITIAL_HP,
-        playerMaxHP: INITIAL_HP,
+        playerMaxHP: INITIAL_HP, // Could be sum of team?
         opponentMaxHP: INITIAL_HP,
         timer: GAME_CONFIG.BATTLE_DURATION_SEC,
         logs: [],
         status: 'idle',
         winner: null,
-        playerId: blades[0]?.id || '',
-        opponentId: blades[1]?.id || '',
+        playerId: teamA[0]?.id || '',
+        opponentId: teamB[0]?.id || '',
+        teams: {
+            player: playerIds,
+            opponent: opponentIds
+        },
+        gameMode,
         participants
     };
 };
@@ -51,10 +80,10 @@ function battleReducer(state: BattleState, action: Action): BattleState {
             // Apply damage to participants
             Object.entries(action.payload.damageMap).forEach(([id, damage]) => {
                 const participant = newParticipants[id];
-                if (participant) {
+                if (participant && !participant.isDead) { // Only damage living
                     let newHP = participant.hp - damage;
 
-                    // Invincibility Frame: Cannot die within first MIN_DURATION seconds
+                    // Invincibility Frame
                     if (currentDuration < MIN_DURATION && newHP <= 0) {
                         newHP = 1;
                     }
@@ -63,6 +92,7 @@ function battleReducer(state: BattleState, action: Action): BattleState {
 
                     if (participant.hp <= 0) {
                         participant.isDead = true;
+                        // Log death?
                     }
                 }
             });
@@ -71,6 +101,22 @@ function battleReducer(state: BattleState, action: Action): BattleState {
             const p1 = newParticipants[state.playerId];
             const p2 = newParticipants[state.opponentId];
 
+            // Victory Logic for Teams
+            const playerTeamAlive = state.teams.player.some(id => !newParticipants[id].isDead);
+            const opponentTeamAlive = state.teams.opponent.some(id => !newParticipants[id].isDead);
+            let winner = null;
+
+            if (!playerTeamAlive && !opponentTeamAlive) winner = 'draw';
+            else if (!playerTeamAlive) winner = 'opponent'; // Team B wins
+            else if (!opponentTeamAlive) winner = 'player'; // Team A wins
+
+            // If winner found here via death (Knockout)
+            if (winner) {
+                // Return here or dispatch END_BATTLE in effect? 
+                // Reducers should just update state. Effect will see winner and trigger audio.
+                // But we need to set status to finished.
+            }
+
             return {
                 ...state,
                 participants: newParticipants,
@@ -78,12 +124,14 @@ function battleReducer(state: BattleState, action: Action): BattleState {
                 opponentHP: p2 ? p2.hp : state.opponentHP,
                 logs: [...state.logs, ...action.payload.logs],
                 timer: Math.max(0, state.timer - (GAME_CONFIG.TICK_RATE_MS / 1000)),
+                // Determine winner in effect to play audio, but we can pre-calc status here if needed
             };
+
         case 'END_BATTLE':
             return { ...state, status: 'finished', winner: action.payload.winner };
+
         case 'RESET':
-            // Instead of returning initialState (which is constant), we logically need to reset based on blades.
-            // But reducer is pure. We might need a RESET_WITH_BLADES action or just reset HP.
+            // Simple reset for now, might need full re-init via props change
             const resetParticipants = { ...state.participants };
             Object.keys(resetParticipants).forEach(key => {
                 resetParticipants[key].hp = resetParticipants[key].maxHP;
@@ -91,8 +139,6 @@ function battleReducer(state: BattleState, action: Action): BattleState {
             });
             return {
                 ...state,
-                playerHP: state.playerMaxHP,
-                opponentHP: state.opponentMaxHP,
                 timer: GAME_CONFIG.BATTLE_DURATION_SEC,
                 logs: [],
                 status: 'idle',
@@ -104,23 +150,30 @@ function battleReducer(state: BattleState, action: Action): BattleState {
     }
 }
 
-export function useBattleEngine(blades: Beyblade[]) {
-    // Memoize initial state creation? Use lazy init
-    const [state, dispatch] = useReducer(battleReducer, blades, createInitialState);
+export function useBattleEngine(teamA: Beyblade[], teamB: Beyblade[], gameMode: '1v1' | '2v2' = '1v1') {
+    // Wrap init to pass all args
+    const [state, dispatch] = useReducer(battleReducer, null, () => createInitialState(teamA, teamB, gameMode));
     const stateRef = useRef(state);
 
-    // Keep ref synced with state
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
 
-    // Update state if blades change (e.g. new battle selection)
+    // Re-init if teams change significantly
     useEffect(() => {
-        // Reset/Re-init if blades change significantly (different IDs)
-        // For simplicity, we can just dispatch RESET which handles HP refresh
-        // But if IDs change completely, we might need to recreate participants.
-        // For now, assume this hook is mounted fresh for each battle or handled by parent.
-    }, [blades]);
+        // Checking if IDs changed to avoid unnecessary resets
+        const currentP = state.teams.player.join(',');
+        const newP = teamA.map(b => b.id).join(',');
+        const currentO = state.teams.opponent.join(',');
+        const newO = teamB.map(b => b.id).join(',');
+
+        if (currentP !== newP || currentO !== newO || state.gameMode !== gameMode) {
+            // We can't easily swap state in reducer without a special action. 
+            // Ideally we should key the component using this hook to force remount.
+            // verifying 'resetBattle' handles simple restarts.
+        }
+    }, [teamA, teamB, gameMode, state.teams, state.gameMode]);
+
 
     const calculateDamage = useCallback((attacker: Beyblade, defender: Beyblade) => {
         const base = GAME_CONFIG.BASE_DAMAGE;
@@ -148,100 +201,119 @@ export function useBattleEngine(blades: Beyblade[]) {
             const currentState = stateRef.current;
             const activeIds = Object.keys(currentState.participants).filter(id => !currentState.participants[id].isDead);
 
-            // End Condition
+            // End Condition Logic
             const battleDuration = GAME_CONFIG.BATTLE_DURATION_SEC - currentState.timer;
             const MIN_BATTLE_TIME = GAME_CONFIG.MIN_DURATION_SEC;
 
-            // 1v1 End
-            if (activeIds.length <= 1 && battleDuration >= MIN_BATTLE_TIME) {
-                const winner = activeIds.length === 1 ? activeIds[0] : 'draw';
-                audioManager.playWin();
-                dispatch({ type: 'END_BATTLE', payload: { winner } });
-                return;
+            // Check Teams Alive
+            const playerTeamAlive = currentState.teams.player.some(id => !currentState.participants[id].isDead);
+            const opponentTeamAlive = currentState.teams.opponent.some(id => !currentState.participants[id].isDead);
+
+            if (battleDuration >= MIN_BATTLE_TIME) {
+                if (!playerTeamAlive && !opponentTeamAlive) {
+                    audioManager.playWin();
+                    dispatch({ type: 'END_BATTLE', payload: { winner: 'draw' } });
+                    return;
+                } else if (!playerTeamAlive) {
+                    audioManager.playWin();
+                    dispatch({ type: 'END_BATTLE', payload: { winner: teamB[0].id } }); // Or 'opponent'
+                    return;
+                } else if (!opponentTeamAlive) {
+                    audioManager.playWin();
+                    dispatch({ type: 'END_BATTLE', payload: { winner: teamA[0].id } }); // Or 'player'
+                    return;
+                }
             }
 
             // Time Limit End
             if (currentState.timer <= 0 && battleDuration >= MIN_BATTLE_TIME) {
-                // Winner is highest HP
-                const sorted = Object.keys(currentState.participants).sort((a, b) => currentState.participants[b].hp - currentState.participants[a].hp);
+                // Sum HP per team
+                const hpA = currentState.teams.player.reduce((sum, id) => sum + currentState.participants[id].hp, 0);
+                const hpB = currentState.teams.opponent.reduce((sum, id) => sum + currentState.participants[id].hp, 0);
+
+                const winnerId = hpA >= hpB ? teamA[0].id : teamB[0].id;
                 audioManager.playWin();
-                dispatch({ type: 'END_BATTLE', payload: { winner: sorted[0] } });
+                dispatch({ type: 'END_BATTLE', payload: { winner: winnerId } });
                 return;
             }
 
-            // Min Duration Enforcement
-            // If we should be ending but min time isn't met, we keep them at 1 HP inside the damage logic below or just don't end.
-            // The above checks handle the "don't end" part.
-
-            // Collision Logic (N-way)
-            const clashChance = 0.3; // Per pair? Or global?
-            // For N > 2, we should probably check pairs randomly.
-            // Let's pick two random active blades to potentially clash.
+            // Collision Logic (Team Aware)
+            const clashChance = 0.3;
             if (activeIds.length >= 2) {
                 const willClash = Math.random() < clashChance;
 
                 if (willClash) {
-                    // Pick 2 random distinct fighters
+                    // Pick 1 from active IDs
                     const idx1 = randomInt(0, activeIds.length - 1);
-                    let idx2 = randomInt(0, activeIds.length - 1);
-                    while (idx2 === idx1) idx2 = randomInt(0, activeIds.length - 1);
-
                     const id1 = activeIds[idx1];
-                    const id2 = activeIds[idx2];
+                    const p1 = currentState.participants[id1];
 
-                    const blade1 = blades.find(b => b.id === id1)!;
-                    const blade2 = blades.find(b => b.id === id2)!;
+                    // Identify potential targets (Must be OPPOSITE TEAM)
+                    const validTargets = activeIds.filter(id => currentState.participants[id].teamId !== p1.teamId);
 
-                    const hit1 = calculateDamage(blade1, blade2); // 1 hits 2
-                    const hit2 = calculateDamage(blade2, blade1); // 2 hits 1
+                    if (validTargets.length > 0) {
+                        const idx2 = randomInt(0, validTargets.length - 1);
+                        const id2 = validTargets[idx2];
 
-                    const newLogs: BattleLog[] = [];
-                    const timestamp = Date.now();
-                    let someCrit = false;
+                        // Find Blade Objects
+                        const blade1 = [...teamA, ...teamB].find(b => b.id === id1)!;
+                        const blade2 = [...teamA, ...teamB].find(b => b.id === id2)!;
 
-                    // Log logic...
-                    if (hit1.isCrit || hit2.isCrit) {
-                        someCrit = true;
-                        newLogs.push({
-                            id: `crit-${timestamp}`,
-                            timestamp,
-                            message: `CRITICAL IMPACT!`,
-                            type: 'critical',
-                            damage: hit1.isCrit ? hit1.damage : hit2.damage
-                        });
-                    }
+                        const hit1 = calculateDamage(blade1, blade2); // 1 hits 2
+                        const hit2 = calculateDamage(blade2, blade1); // 2 hits 1
 
-                    if (someCrit) audioManager.playCritical();
-                    else audioManager.playClash();
+                        const newLogs: BattleLog[] = [];
+                        const timestamp = Date.now();
+                        let someCrit = false;
 
-                    if (!someCrit) {
-                        newLogs.push({
-                            id: `clash-${timestamp}`,
-                            timestamp,
-                            message: `${blade1.name} clashes with ${blade2.name}`,
-                            type: 'clash'
-                        });
-                    }
-
-                    // Enforce Min Duration (Clamp damage if < 10s)
-                    let dmgTo1 = hit2.damage;
-                    let dmgTo2 = hit1.damage;
-
-                    if (battleDuration < MIN_BATTLE_TIME) {
-                        if (currentState.participants[id1].hp - dmgTo1 <= 0) dmgTo1 = 0;
-                        if (currentState.participants[id2].hp - dmgTo2 <= 0) dmgTo2 = 0;
-                    }
-
-                    dispatch({
-                        type: 'TICK',
-                        payload: {
-                            logs: newLogs,
-                            damageMap: {
-                                [id1]: dmgTo1,
-                                [id2]: dmgTo2
-                            }
+                        if (hit1.isCrit || hit2.isCrit) {
+                            someCrit = true;
+                            newLogs.push({
+                                id: `crit-${timestamp}`,
+                                timestamp,
+                                message: `CRITICAL IMPACT!`,
+                                type: 'critical',
+                                damage: hit1.isCrit ? hit1.damage : hit2.damage
+                            });
                         }
-                    });
+
+                        if (someCrit) audioManager.playCritical();
+                        else audioManager.playClash();
+
+                        if (!someCrit) {
+                            newLogs.push({
+                                id: `clash-${timestamp}`,
+                                timestamp,
+                                message: `${blade1.name} clashes with ${blade2.name}`,
+                                type: 'clash'
+                            });
+                        }
+
+                        // Enforce Min Duration (Clamp damage if < 10s)
+                        let dmgTo1 = hit2.damage;
+                        let dmgTo2 = hit1.damage;
+
+                        if (battleDuration < MIN_BATTLE_TIME) {
+                            if (currentState.participants[id1].hp - dmgTo1 <= 0) dmgTo1 = 0;
+                            if (currentState.participants[id2].hp - dmgTo2 <= 0) dmgTo2 = 0;
+                        }
+
+                        dispatch({
+                            type: 'TICK',
+                            payload: {
+                                logs: newLogs,
+                                damageMap: {
+                                    [id1]: dmgTo1,
+                                    [id2]: dmgTo2
+                                }
+                            }
+                        });
+
+
+                    } else {
+                        // No valid targets (enemy team dead but battle not ended?)
+                        dispatch({ type: 'TICK', payload: { logs: [], damageMap: {} } });
+                    }
 
                 } else {
                     dispatch({ type: 'TICK', payload: { logs: [], damageMap: {} } });
@@ -253,7 +325,7 @@ export function useBattleEngine(blades: Beyblade[]) {
         }, GAME_CONFIG.TICK_RATE_MS);
 
         return () => clearInterval(timerId);
-    }, [state.status, blades, calculateDamage]);
+    }, [state.status, teamA, teamB, calculateDamage]);
 
     return {
         state,

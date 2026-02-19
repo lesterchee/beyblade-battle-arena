@@ -54,11 +54,12 @@ export function TournamentView({ onExit }: TournamentViewProps) {
         return (
             <div className="fixed inset-0 z-50 bg-black">
                 <BattleView
-                    playerBlade={activeBattle.p1}
-                    opponentBlade={activeBattle.p2}
+                    teamA={[activeBattle.p1]}
+                    teamB={[activeBattle.p2]}
+                    gameMode="1v1"
                     onExit={() => setActiveBattle(null)} // Forfeit?
                     onMatchComplete={handleBattleEnd}
-                    isTournament={true}
+                    isTournament
                 />
             </div>
         );

@@ -1,84 +1,91 @@
 'use client';
 
 import { BattleState, Beyblade } from '@/types/game';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // Added AnimatePresence
 import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
 
 interface BattleHUDProps {
     state: BattleState;
-    player: Beyblade;
-    opponent: Beyblade;
+    teamA: Beyblade[]; // Changed from player
+    teamB: Beyblade[]; // Changed from opponent
 }
 
-export function BattleHUD({ state, player, opponent }: BattleHUDProps) {
-    const logContainerRef = useRef<HTMLDivElement>(null);
+export function BattleHUD({ state, teamA, teamB }: BattleHUDProps) {
+    // Removed logContainerRef and its useEffect as the new log display doesn't use it for auto-scrolling
+    const battleLogs = state.logs.slice(-5); // Show last 5 logs
 
-    // Auto-scroll logs
-    useEffect(() => {
-        if (logContainerRef.current) {
-            logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-        }
-    }, [state.logs]);
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
 
     return (
         <div className="relative h-full w-full p-4 md:p-8 pointer-events-none overflow-hidden">
 
             {/* Top Center: Timer */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
-                <div className="bg-black/90 text-white px-8 py-2 border-b-4 border-blue-500 skew-x-[-15deg] shadow-[0_0_20px_rgba(59,130,246,0.6)]">
-                    <span className="block text-5xl font-barlow font-black italic min-w-[3ch] text-center skew-x-[15deg] drop-shadow-md">
-                        {Math.ceil(state.timer)}
-                    </span>
+                <div className="text-6xl font-barlow font-black italic text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" style={{ WebkitTextStroke: '2px black' }}>
+                    {formatTime(state.timer)}
                 </div>
-                <span className="text-[10px] font-barlow font-bold tracking-[0.3em] pt-1 text-slate-300 uppercase drop-shadow">Time Remaining</span>
+                <div className="text-xs font-mono text-slate-400 tracking-widest uppercase bg-black/50 px-2 rounded">
+                    BATTLE DURATION
+                </div>
             </div>
 
-            {/* Top Left: Player Card */}
-            <div className="absolute top-4 left-4 md:left-8 z-10">
-                <HealthBar
-                    blade={player}
-                    hp={state.participants[player.id]?.hp ?? state.playerHP}
-                    maxHp={state.participants[player.id]?.maxHP ?? state.playerMaxHP}
-                    align="left"
-                    isPlayer={true}
-                />
+            {/* Top Left: Team A Cards */}
+            <div className="absolute top-4 left-4 md:left-8 z-10 flex flex-col gap-4">
+                {teamA.map((blade, index) => (
+                    <HealthBar
+                        key={blade.id}
+                        blade={blade}
+                        hp={state.participants[blade.id]?.hp ?? 1000}
+                        maxHp={state.participants[blade.id]?.maxHP ?? 1000}
+                        align="left"
+                        isPlayer={true}
+                        index={index}
+                    />
+                ))}
             </div>
 
-            {/* Top Right: Opponent Card */}
-            <div className="absolute top-4 right-4 md:right-8 z-10">
-                <HealthBar
-                    blade={opponent}
-                    hp={state.participants[opponent.id]?.hp ?? state.opponentHP}
-                    maxHp={state.participants[opponent.id]?.maxHP ?? state.opponentMaxHP}
-                    align="right"
-                    isPlayer={false}
-                />
+            {/* Top Right: Team B Cards */}
+            <div className="absolute top-4 right-4 md:right-8 z-10 flex flex-col gap-4">
+                {teamB.map((blade, index) => (
+                    <HealthBar
+                        key={blade.id}
+                        blade={blade}
+                        hp={state.participants[blade.id]?.hp ?? 1000}
+                        maxHp={state.participants[blade.id]?.maxHP ?? 1000}
+                        align="right"
+                        isPlayer={false}
+                        index={index}
+                    />
+                ))}
             </div>
 
             {/* Bottom Right: Battle Log */}
             <div className="absolute bottom-4 right-4 md:right-8 z-10 flex flex-col items-end">
-                <h4 className="text-xs font-barlow font-bold text-slate-500 uppercase tracking-widest mb-1 mr-1">Battle Feed</h4>
-                <div
-                    ref={logContainerRef}
-                    className="w-80 h-48 bg-black/70 backdrop-blur-md p-3 border-r-4 border-yellow-500 font-mono text-xs space-y-1 mask-linear-fade pointer-events-auto overflow-y-auto shadow-xl"
-                >
-                    {state.logs.map((log) => (
-                        <div key={log.id} className={cn(
-                            "opacity-90 animate-in fade-in slide-in-from-right-2",
-                            log.type === 'critical' ? "text-yellow-400 font-bold" : "text-slate-300"
-                        )}>
-                            <span className="text-slate-500">[{new Date(log.timestamp).toLocaleTimeString().slice(3, -3)}]</span> {log.message}
-                        </div>
+                <AnimatePresence>
+                    {battleLogs.map((log) => (
+                        <motion.div
+                            key={log.id}
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="bg-black/60 backdrop-blur-md px-4 py-2 mb-2 rounded border-l-4 border-blue-500 font-mono text-xs md:text-sm text-white shadow-lg max-w-[300px]"
+                        >
+                            <span className="text-slate-400">[{formatTime(log.timestamp / 1000 % 60)}]</span> {log.message}
+                        </motion.div>
                     ))}
-                </div>
+                </AnimatePresence>
             </div>
 
         </div>
     );
 }
-// HealthBar component remains exactly the same
-function HealthBar({ blade, hp, maxHp, align, isPlayer }: { blade: Beyblade, hp: number, maxHp: number, align: 'left' | 'right', isPlayer: boolean }) {
+// HealthBar component with Signature Colors
+function HealthBar({ blade, hp, maxHp, align, isPlayer, index = 0 }: { blade: Beyblade, hp: number, maxHp: number, align: 'left' | 'right', isPlayer: boolean, index?: number }) {
     const percent = Math.max(0, (hp / maxHp) * 100);
     const isCritical = percent < 30;
 
