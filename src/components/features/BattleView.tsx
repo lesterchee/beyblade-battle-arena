@@ -135,7 +135,18 @@ export function BattleView({
     }, [showResult, state.winner]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
-    const handleReset = () => {
+    // Rematch: Reset battle state and stay in the arena (no exit).
+    // Must NOT call onExit() — that would leak us back to menu between rounds.
+    const handleRematch = () => {
+        setShowResult(false);
+        setAiSummary(null);
+        resetBattle();
+    };
+
+    // Context-aware exit: reset local battle state then hand off to parent router.
+    // In freeplay, onExit → Main Menu / Character Select.
+    // In tournament, onExit → TournamentView bracket (bracket state is preserved by parent).
+    const handleExitToMenu = () => {
         setShowResult(false);
         setAiSummary(null);
         resetBattle();
@@ -229,14 +240,26 @@ export function BattleView({
                             )}
 
                             <div className="flex gap-6 justify-center mt-8">
-                                {!isTournament && (
+                                {/* --- Draw: show Rematch + context-aware Exit for ALL contexts --- */}
+                                {state.winner === 'draw' && (
                                     <>
-                                        <Button size="lg" onClick={handleReset}>REMATCH</Button>
-                                        <Button variant="secondary" size="lg" onClick={onExit}>EXIT ARENA</Button>
+                                        <Button size="lg" onClick={handleRematch}>REMATCH</Button>
+                                        <Button variant="secondary" size="lg" onClick={handleExitToMenu}>
+                                            {isTournament ? 'BACK TO BRACKET' : 'EXIT ARENA'}
+                                        </Button>
                                     </>
                                 )}
 
-                                {isTournament && (
+                                {/* --- Non-draw Freeplay: Rematch + Exit --- */}
+                                {state.winner !== 'draw' && !isTournament && (
+                                    <>
+                                        <Button size="lg" onClick={handleRematch}>REMATCH</Button>
+                                        <Button variant="secondary" size="lg" onClick={handleExitToMenu}>EXIT ARENA</Button>
+                                    </>
+                                )}
+
+                                {/* --- Non-draw Tournament: auto-advances via onMatchComplete callback --- */}
+                                {state.winner !== 'draw' && isTournament && (
                                     <div className="text-2xl text-blue-400 font-barlow font-bold animate-pulse">
                                         ADVANCING TO BRACKET...
                                     </div>
